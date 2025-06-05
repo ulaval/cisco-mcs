@@ -217,21 +217,27 @@ Ci-dessous une description de chaque type de device inclus par défaut.
 ### Display (projecteur, téléviseur)
 ```JS
     {
-      id: 'display.projector',                      //identification unique
+      id: 'display.projector',                      //Identification unique
       type: DEVICETYPE.DISPLAY,                     //Type = 'DISPLAY'
       name: 'PROJ',                                 //Nom, utilisé par le driver pour la communication
       device: devicesLibrary.Display,               //Classe à utiliser
-      driver: driversLibrary.DisplayDriver_isc_h21, //Driver à utiliser par le device
+      driver: driversLibrary.DisplayDriver_serial_sonybpj, //Driver à utiliser par le device
       connector: 1,                                 //Connecteur HDMI de sortie sur le codec
+      supportsSystemStatus:true,                    //Défini si l'affichage supporte le rapport de l'état général
+      systemStatusRequestInterval:3600000,          //Interval de demande de status du système
+      supportsFilterStatus: true,                   //Défini si l'affichage supporte le rapport de l'état du filtre
+      filterStatusRequestInterval:3600000,            //Interval de demande du status du filtre
       supportsPower: true,                          //Défini si l'affichage supporte les commandes d'alimentation (ON, OFF)
-      supportsBlanking: false,                      //Défini si l'affichage supporte les commandes de blanking (BLANK, UNBLANK)
+      supportsBlanking: true,                      //Défini si l'affichage supporte les commandes de blanking (BLANK, UNBLANK)
       supportsSource: false,                        //Défini si l'affichage supporte le changement de source (HDMI1, HDMI2, SDI)
-      supportsUsageHours: false,                    //Défini si l'affichage supporte le rapport de temps d'utilisation
+      supportsUsageHours: true,                    //Défini si l'affichage supporte le rapport de temps d'utilisation
       defaultPower: 'off',                          //Alimentation par défaut lors du démarrage du système (ON, OFF)
       defaultBlanking: false,                       //Blanking par défaut lors du démarrage du système (BLANK, UNBLANK)
       blankBeforePowerOff: true,                    //Défini si l'affichage doit être BLANK entre le moment où il reçoit la commande "OFF" et le moment où il est réellement OFF (powerOffDelay)
-      powerOffDelay: 6000,                          //Délais entre la commande OFF du système et le véritable changement d'alimentation à OFF
-      usageHoursRequestInterval: 100000,            //Interval de demande du temps d'utilisation
+      powerOffDelay: 300000,                          //Délais entre la commande OFF du système et le véritable changement d'alimentation à OFF
+      usageHoursRequestInterval: 3600000,            //Interval de demande du temps d'utilisation
+      usageHoursRequestTimeout:2000,
+      port: 1                                        //Numéro du port série
     }
 ```
 Cet appareil prends automatiquement en charge certain widgets. Les widgets doivent avoir une identification particulière.
@@ -255,7 +261,6 @@ Cet appareil prends automatiquement en charge certain widgets. Les widgets doive
       heartbeatInterval: 5000                             //Interval à laquelle le driver signalera sa présence au système de contrôle
     }
 ```
-
 ### Screen (toile motorisée)
 #### En utilisant un système de contrôle externe
 ```JS
@@ -317,6 +322,7 @@ Cet appareil prends automatiquement en charge certain widgets. Les widgets doive
 * **shades:DOWN** : Bouton, descends la toile
 
 ### AudioInput (entrée audio du codec)
+Attention, le niveau de ÀudioInput` va de 0 à 70.
 ```JS
     {
       id: 'audioinput.presenter.sf1',                   //Identification unique
@@ -330,7 +336,7 @@ Cet appareil prends automatiquement en charge certain widgets. Les widgets doive
       gainLowLimit: 20,                                 //Limite basse du gain de l'entrée
       gainHighLimit: 70,                                //Limite supérieure du gain de l'entrée
       defaultGain: 60,                                  //Gain par défaut au démarrage du système
-      gainStep: 1,                                      //Gain ajouté ou retiré de la valeur actuelle lorsque les fonctionas increase() et decrease() sont appelées
+      gainStep: 1,                                      //Gain ajouté ou retiré de la valeur actuelle lorsque les fonctions increase() et decrease() sont appelées
       defaultMode: 'on',                                //Mode par défaut lors du démarrage du système
       lowGain: 60,                                      //Gain "bas" (utilisé par les widgets de type "button group")
       mediumGain: 65,                                   //Gain "moyen" (utilisé par les widgets de type "button group")
@@ -342,6 +348,29 @@ Cet appareil prends automatiquement en charge certain widgets. Les widgets doive
 * **audioinput.presenter.sf1:MODE** : Toggle, affiche et configure le mode de l'entrée à "ON" ou "OFF"
 * **audioinput.presenter.sf1:LEVEL** : Slider, affiche et configure le gain de l'entrée. Automatiquement scalé entre 0 et 255 -> gainLowLimite et gainHighLimit
 * **audioinput.presenter.sf1:LEVELGROUP** : Button group, affiche et configure le gain de l'entrée, en utilisant mute, lowGain, mediumGain, highGain. L'identification des 4 boutons doivent êtres "off, low, medium, high"
+
+### AudioOutput (sortie audio du codec)
+Attention, le niveau de `AudioOutput` va de -24 à 0.
+```JS
+    /* AUDIO OUTPUTS */
+    {
+      id: 'audiooutput.snubwoofer',                      //Identification unique
+      type: DEVICETYPE.AUDIOOUTPUT,                      //Type = 'AUDIOOUTPUT'
+      name: 'SnubWoofer',                                //Nom
+      device: devicesLibrary.AudioOutput,                //Classe à utiliser
+      driver: driversLibrary.AudioOutputDriver_codecpro, //Driver à utiliser par le device
+      connector: 5,                                      //Connecteur de sortie du codec
+      output: 'line',                                    //line, hdmi, ethernet (ethernet require the "channel" property) : Connectors supported by driver AudioOutput_codecpro
+      levelLowLimit: -20,                                //Limite basse de la sortie
+      levelHighLimit: 0,                                 //Limite supérieure de la sortie
+      defaultLevel: -10,                                 //Niveau par défaut au démarrage du système
+      levelStep: 1,                                      //Niveau ajouté ou retiré de la valeur actuelle lorsque les fonctions increase() et decrease() sont appelées
+      defaultMode: 'on',                                 //Mode par défaut lors du démarrage du système
+      lowLevel: -15,                                     //Niveau "bas" (utlisé par les widgets de type "button group")
+      mediumLevel: -10,                                  //Niveau "moyen" (utlisé par les widgets de type "button group")
+      highLevel: 0,                                      //Niveau "haut" (utlisé par les widgets de type "button group")
+    },
+```
 
 ### CameraPreset
 #### Pour caméra Cisco

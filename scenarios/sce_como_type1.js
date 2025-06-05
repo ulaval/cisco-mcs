@@ -20,7 +20,7 @@ export var Manifest = {
   fileName: 'sce_como_type1',
   id: 'comotype1',
   friendlyName: 'Salle Comodale (Type 1)',
-  version: '1.0.0',
+  version: '1.1.0-release',
   description: 'Comportement normal pour une salle comodale de type 1',
   panels: {
     hide: ['*'],
@@ -290,7 +290,7 @@ export class Scenario {
     if (status.AutoScreens == ON) {
       var needPresentationScreen = (status.call == 'Connected' && status.PresenterLocation == REMOTE) || status.presentation.type != 'NOPRESENTATION';
       var needClearZone = status.ClearPresentationZone == ON ? true : false;
-
+      
       if (needPresentationScreen) {
         if (needClearZone) {
           this.devices.screens.presentation.forEach(screen => {

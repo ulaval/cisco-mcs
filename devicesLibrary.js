@@ -216,23 +216,25 @@ export class Display {
     this._currentBlanking = undefined;
     this._currentSource = undefined;
     this._usageHours = undefined;
-    this._usageHoursReqTimeout = undefined;
+    this._usageHoursTimeout = undefined;
     this.powerOffTimeout = undefined;
     var self = this;
 
+
     if (config.supportsUsageHours) {
-      this._usageHoursRequestInterval = setInterval(() => {
-        debug(1, `Requesting usage hours for display "${this.config.id}"`);
-        self.driver.requestUsageHours();
-        this._usageHoursReqTimeout = setTimeout(() => {
-          debug(1, `No usage hours response for display "${this.config.id}"`);
-        }, 5000);
-      }, this.config.usageHoursRequestInterval);
+      self.startRequestUsageHours(self);
+    }
+
+    if (config.supportsFilterStatus) {
+      self.startRequestFilterStatus(self);
+    }
+
+    if (config.supportsSystemStatus) {
+      self.startRequestSystemStatus(self);
     }
 
     // Load driver
     this.driver = new this.config.driver(this, config);
-
     this.setDefaults();
 
     // Default WidgetMapping
@@ -252,6 +254,82 @@ export class Display {
     powerToggle.on('changed', (value) => {
       this.setPower(value);
     });
+  }
+
+  startRequestUsageHours(self) {
+    self._usageHoursInterval = setInterval(() => {
+      debug(1, `${this.config.id}: Requesting usage hours...`);
+      self.driver.requestUsageHours().then(usage => {
+        debug(1, `${this.config.id}: Received usage hours: ${usage}`);
+        self._usageHours = usage;
+        if (zapi.telemetry.available == true) {
+          const dynamicUsage = `lampUsage_${this.config.id}`;
+          const resultObject = {
+            [dynamicUsage]: usage,
+          };
+          zapi.telemetry.send(resultObject);
+        }
+      }).catch(err => {
+        debug(3, `${this.config.id}: Error getting usage hours report: ${err}`);
+        if (zapi.telemetry.available == true) {
+          const dynamicError = `systemStatus_${this.config.id}`;
+          const resultObject = {
+            [dynamicError]: err
+          };
+          zapi.telemetry.send(resultObject);
+        }
+      });
+    }, self.config.usageHoursRequestInterval);
+  }
+
+  startRequestFilterStatus(self) {
+    self._filterStatusInterval = setInterval(() => {
+      debug(1, `${this.config.id}: Requesting filter status...`);
+      self.driver.requestFilterStatus().then(status => {
+        debug(1, `${this.config.id}: Received filter status report: ${status}`);
+        if (zapi.telemetry.available == true) {
+          const dynamicKey = `filterStatus_${this.config.id}`;
+          const resultObject = {
+            [dynamicKey]: status
+          };
+          zapi.telemetry.send(resultObject);
+        }
+      }).catch(err => {
+        debug(3, `${this.config.id}: Error getting filter status report: ${err}`);
+        if (zapi.telemetry.available == true) {
+          const dynamicError = `systemStatus_${this.config.id}`;
+          const resultObject = {
+            [dynamicError]: err
+          };
+          zapi.telemetry.send(resultObject);
+        }
+      });
+    }, self.config.filterStatusRequestInterval);
+  }
+
+  startRequestSystemStatus(self) {
+    self._systemStatusInterval = setInterval(() => {
+      debug(1, `${this.config.id}: Requesting system status...`);
+      self.driver.requestSystemStatus().then(status => {
+        debug(1, `${this.config.id}: Received system status report: ${status}`);
+        if (zapi.telemetry.available == true) {
+          const dynamicKey = `systemStatus_${this.config.id}`;
+          const resultObject = {
+            [dynamicKey]: status
+          };
+          zapi.telemetry.send(resultObject);
+        }
+      }).catch(err => {
+        debug(3, `${this.config.id}: Error getting system status report: ${err}`);
+        if (zapi.telemetry.available == true) {
+          const dynamicError = `systemStatus_${this.config.id}`;
+          const resultObject = {
+            [dynamicError]: err
+          };
+          zapi.telemetry.send(resultObject);
+        }
+      });
+    }, self.config.systemStatusRequestInterval);
   }
 
   setDefaults() {
@@ -362,9 +440,9 @@ export class Display {
   }
 
   fbUsageHours(usage) {
-    clearTimeout(this._usageHoursReqTimeout);
-    debug(1, `Received usage hours report for display "${this.config.id}": ${usage}`);
-    this._usageHours = usage;
+    clearTimeout(this._usageHoursTimeout);
+
+
   }
 
   processActionPower(power) {
@@ -586,7 +664,12 @@ export class CameraPreset {
 export class AudioInput {
   constructor(config) {
     this.config = config;
-    this.driver = new this.config.driver(this, config);
+    try {
+      this.driver = new this.config.driver(this, config);
+    }
+    catch (e) {
+      debug(3,`AudioInput (constructor) ERROR: Could not load audio driver for device ${this.config.id}`);
+    }
     this.currentGain = undefined;
     this.currentMute = undefined;
     this.beforeBoostGain = undefined;
@@ -595,7 +678,6 @@ export class AudioInput {
     this.widgetLevelGroupName = this.config.id + ':LEVELGROUP';
     this.beforeBoostGain = undefined;
     this.storedGain = this.config.defaultGain;
-
     //Default UI Handling
     this.modeSwitch = zapi.ui.addWidgetMapping(this.widgetModeName);
     this.modeSwitch.on('changed', value => {
@@ -607,7 +689,6 @@ export class AudioInput {
       let mappedGain = mapValue(value, 0, 255, this.config.gainLowLimit, this.config.gainHighLimit);
       this.setGain(mappedGain);
     });
-
     if (this.config.lowGain || this.config.mediumGain || this.config.highGain) {
       this.levelGroup = zapi.ui.addWidgetMapping(this.widgetLevelGroupName);
       this.levelGroup.on('released', value => {
@@ -625,7 +706,6 @@ export class AudioInput {
         }
       });
     }
-
     this.setDefaults();
   }
 
@@ -928,7 +1008,7 @@ export class Screen {
   constructor(config) {
     this.config = config;
     var self = this;
-    this._currentPosition = undefined;
+    this._currentPosition = 'unknown';
     this.driver = new this.config.driver(this, config);
 
     this.setDefaults();
@@ -952,7 +1032,7 @@ export class Screen {
 
   setPosition(position) {
     position = position.toLowerCase();
-    if (position != this._currentPosition) {
+    if (this._currentPosition != position) {
       this._currentPosition = position;
       this.driver.setPosition(position);
     }
